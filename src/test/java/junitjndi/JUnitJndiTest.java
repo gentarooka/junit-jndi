@@ -29,9 +29,20 @@ public class JUnitJndiTest {
 		assertThat((String)new InitialContext().lookup("somestring"), is("abc"));
 	}
 	
+	@Test
+	public void doLookup() throws NamingException {
+		assertThat(InitialContext.doLookup("someobj"), is(notNullValue(Object.class)));
+		assertThat((String)InitialContext.doLookup("somestring"), is("abc"));
+	}
+	
 	@Test(expected=NamingException.class)
 	public void lookupNothing() throws NamingException {
 		new InitialContext().lookup("ohter");
+	}
+	
+	@Test
+	public void lookup2() {
+		
 	}
 
 }
