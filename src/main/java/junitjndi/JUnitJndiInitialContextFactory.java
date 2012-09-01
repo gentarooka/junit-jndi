@@ -11,7 +11,7 @@ public class JUnitJndiInitialContextFactory implements InitialContextFactory{
 	@Override
 	public Context getInitialContext(Hashtable<?, ?> environment)
 			throws NamingException {
-		return new SimpleContext();
+		return new SimpleInitialContext();
 	}
 
 }

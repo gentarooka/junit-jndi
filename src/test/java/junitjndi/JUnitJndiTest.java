@@ -19,6 +19,9 @@ public class JUnitJndiTest {
 		protected void bind(Context context) throws NamingException {
 			context.bind("someobj", new Object());
 			context.bind("somestring", "abc");
+			
+			Context cx = context.createSubcontext("java:/comp/env");
+			cx.bind("jdbc/mysql", "MysqlDatasource");
 		}
 	};
 	
@@ -35,14 +38,15 @@ public class JUnitJndiTest {
 		assertThat((String)InitialContext.doLookup("somestring"), is("abc"));
 	}
 	
+	@Test
+	public void lookupSubContext() throws NamingException {
+		Context cx = (Context) new InitialContext().lookup("java:/comp/env");
+		assertThat((String)cx.lookup("jdbc/mysql"), is("MysqlDatasource"));
+	}
+	
 	@Test(expected=NamingException.class)
 	public void lookupNothing() throws NamingException {
 		new InitialContext().lookup("ohter");
-	}
-	
-	@Test
-	public void lookup2() {
-		
 	}
 
 }
