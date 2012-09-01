@@ -1,18 +1,16 @@
-package junitjndi;
+# JNDI for JUnit4
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertThat;
+this library is JNDI mock implementation for testing with JUnit4.x
 
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
+# USAGE
 
-import org.junit.ClassRule;
-import org.junit.Test;
+It's very simple to use.
 
-public class JUnitJndiInitialContextFactoryTest {
-	
+Please see JndiJunitTest.java
+
+
+public class JUnitJndiTest {
+
 	@ClassRule
 	public static JndiRule jndi = new JndiRule() {
 		@Override
@@ -21,14 +19,14 @@ public class JUnitJndiInitialContextFactoryTest {
 			context.bind("somestring", "abc");
 		}
 	};
-	
-	
+
+
 	@Test
 	public void lookup() throws NamingException {
 		assertThat(new InitialContext().lookup("someobj"), is(notNullValue(Object.class)));
 		assertThat((String)new InitialContext().lookup("somestring"), is("abc"));
 	}
-	
+
 	@Test(expected=NamingException.class)
 	public void lookupNothing() throws NamingException {
 		new InitialContext().lookup("ohter");
