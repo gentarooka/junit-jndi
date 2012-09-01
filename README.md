@@ -13,10 +13,10 @@ this library is JNDI mock implementation for testing with JUnit4.x
 and write dependency in your pom.xml
 
     <dependency>
-		  <groupId>junit-jndi</groupId>
-			<artifactId>junit-jndi</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
+      <groupId>junit-jndi</groupId>
+      <artifactId>junit-jndi</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
 
 
 ## HOW TO WRITE TESTCASE WITH JNDI-JUNIT
