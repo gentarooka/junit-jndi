@@ -8,7 +8,7 @@
 
 *.class
 
-*/target/*
+target
 
 .settings
 
