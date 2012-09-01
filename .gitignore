@@ -1,0 +1,15 @@
+# ignore eclipse workspace .metadata folder
+
+.metadata/*
+
+.classpath
+
+.project
+
+*.class
+
+*/target/*
+
+.settings
+
+/Servers/
