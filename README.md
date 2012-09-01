@@ -4,6 +4,23 @@ this library is JNDI mock implementation for testing with JUnit4.x
 
 # USAGE
 
+## INSTALL
+
+    git clone git://github.com/gensan/junit-jndi.git junit-jndi
+		cd junit-jndi
+		mvn install
+
+and write dependency in your pom.xml
+
+    <dependency>
+		  <groupId>junit-jndi</groupId>
+			<artifactId>junit-jndi</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+
+
+## HOW TO WRITE TESTCASE WITH JNDI-JUNIT
+
 It's very simple to use.
 
 Please see JndiJunitTest.java
