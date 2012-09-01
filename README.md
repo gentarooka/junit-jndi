@@ -23,7 +23,7 @@ and write dependency in your pom.xml
 
 It's very simple to use.
 
-Please see JndiJunitTest.java
+Please see JndiJunitTest.java for more details.
 
     public class JUnitJndiTest {
     
@@ -36,16 +36,10 @@ Please see JndiJunitTest.java
     		}
     	};
     
-    
     	@Test
     	public void lookup() throws NamingException {
     		assertThat(new InitialContext().lookup("someobj"), is(notNullValue(Object.class)));
     		assertThat((String)new InitialContext().lookup("somestring"), is("abc"));
-    	}
-    
-    	@Test(expected=NamingException.class)
-    	public void lookupNothing() throws NamingException {
-    		new InitialContext().lookup("ohter");
     	}
     
     }
