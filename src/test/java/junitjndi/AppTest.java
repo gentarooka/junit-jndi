@@ -1,4 +1,4 @@
-package junit-jndi;
+package junitjndi;
 
 import junit.framework.Test;
 import junit.framework.TestCase;

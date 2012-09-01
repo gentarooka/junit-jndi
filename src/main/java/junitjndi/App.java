@@ -1,4 +1,4 @@
-package junit-jndi;
+package junitjndi;
 
 /**
  * Hello world!
