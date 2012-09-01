@@ -6,9 +6,9 @@ this library is JNDI mock implementation for testing with JUnit4.x
 
 ## INSTALL
 
-    git clone git://github.com/gensan/junit-jndi.git junit-jndi
-		cd junit-jndi
-		mvn install
+    $ git clone git://github.com/gensan/junit-jndi.git junit-jndi
+    $ cd junit-jndi
+    $ mvn install
 
 and write dependency in your pom.xml
 
