@@ -8,6 +8,8 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
+import junitjndi.rules.JndiRule;
+
 import org.junit.ClassRule;
 import org.junit.Test;
 
