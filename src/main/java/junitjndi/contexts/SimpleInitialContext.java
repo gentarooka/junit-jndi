@@ -1,39 +1,114 @@
 package junitjndi.contexts;
 
-import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import javax.naming.Context;
 import javax.naming.Name;
+import javax.naming.NameAlreadyBoundException;
 import javax.naming.NamingException;
+
+import junitjndi.model.JndiEntryResolver;
+import junitjndi.types.JNDINamespace;
+
+import org.apache.commons.lang3.StringUtils;
 
 public class SimpleInitialContext extends NotImplementedContext implements Context
 {
-	private static final Hashtable<String, Object> container = new Hashtable<String, Object>();
+	private static final Map<JNDINamespace, Map<String, Object>> DICTIONNARIES = new HashMap<JNDINamespace, Map<String, Object>>(
+		JNDINamespace.values().length);
+
+	private static final Map<JNDINamespace, Set<String>> SUBCONTEXTS = new HashMap<JNDINamespace, Set<String>>(JNDINamespace.values().length);
+
+	static
+	{
+		for (JNDINamespace tje : JNDINamespace.values())
+		{
+			DICTIONNARIES.put(tje, new HashMap<String, Object>());
+			SUBCONTEXTS.put(tje, new TreeSet<String>());
+		}
+	}
+
+	private final JNDINamespace currentEntry;
+
+	private final String currentSubContext;
+
+	public SimpleInitialContext()
+	{
+		this(null, null);
+	}
+
+	public SimpleInitialContext(final JNDINamespace currentEntry, final String currentSubContext)
+	{
+		super();
+		this.currentEntry = currentEntry;
+		this.currentSubContext = currentSubContext;
+	}
+
 
 	@Override
-	public Object lookup(Name name) throws NamingException {
+	public Object lookup(Name name) throws NamingException
+	{
 		return lookup(name.toString());
 	}
 
 	@Override
-	public Object lookup(String name) throws NamingException {
-		Object result = container.get(name);
-		
-		if (result == null) {
-			throw new NamingException("any object is not binded to name : " + name.toString());
+	public Object lookup(String name) throws NamingException
+	{
+		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
+
+		if (!DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(jndiEntryResolver.getResolvedName()))
+		{
+			throw new NamingException("any object is not binded to name : " + jndiEntryResolver.getOriginalName());
 		}
 		
-		return result;
+		return DICTIONNARIES.get(jndiEntryResolver.getJndiType()).get(jndiEntryResolver.getResolvedName());
 	}
 
+
 	@Override
-	public void bind(Name name, Object obj) throws NamingException {
+	public void bind(Name name, Object obj) throws NamingException
+	{
 		bind(name.toString(), obj);
 	}
 
 	@Override
-	public void bind(String name, Object obj) throws NamingException {
-		container.put(name, obj);
+	public void bind(String name, Object obj) throws NamingException
+	{
+		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
+
+		if (DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(jndiEntryResolver.getResolvedName()))
+		{
+			throw new NameAlreadyBoundException("Jndi name already exists (" + jndiEntryResolver.getFullQualifiedName() + ").");
+		}
+
+		// if the entry is : "java:global/a/b/c/d", we must extract : "a/b/c" to ensure subcontexts exist.
+		if (StringUtils.countMatches(jndiEntryResolver.getResolvedName(), "/") > 1)
+		{
+			final String[] subContextes = StringUtils.split(jndiEntryResolver.getResolvedName(), "/");
+
+			String currentSubContext = "";
+			for (int index = 0, size = subContextes.length - 1; index < size; index++)
+			{
+				if (StringUtils.isBlank(currentSubContext))
+				{
+					currentSubContext = subContextes[index];
+				}
+				else
+				{
+					currentSubContext += "/" + subContextes[index];
+				}
+
+				if (!SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).contains(currentSubContext))
+				{
+					throw new NamingException("SubContext " + currentSubContext + " doesn't exists...");
+				}
+			}
+		}
+
+		DICTIONNARIES.get(jndiEntryResolver.getJndiType()).put(jndiEntryResolver.getResolvedName(), obj);
 	}
 
 	@Override
@@ -42,9 +117,37 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 	}
 
 	@Override
-	public Context createSubcontext(String name) throws NamingException {
-		Context cx = new SimpleSubContext();
-		container.put(name.toString(), cx);
-		return cx;
+	public Context createSubcontext(String name) throws NamingException
+	{
+		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
+		
+		if (SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).contains(jndiEntryResolver.getResolvedName()))
+		{
+			throw new NameAlreadyBoundException("SubContext " + jndiEntryResolver.getFullQualifiedName() + " already exists...");
+		}
+		
+		final Context subContext = new SimpleInitialContext(jndiEntryResolver.getJndiType(), jndiEntryResolver.getResolvedName());
+		SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).add(jndiEntryResolver.getResolvedName());
+		return subContext;
+	}
+
+	public boolean isRootContext()
+	{
+		return this.currentEntry == null && StringUtils.isBlank(this.currentSubContext);
+	}
+
+	public boolean isSubContext()
+	{
+		return !isRootContext();
+	}
+
+	public JNDINamespace getCurrentEntry()
+	{
+		return currentEntry;
+	}
+
+	public String getCurrentSubContext()
+	{
+		return currentSubContext;
 	}
 }
