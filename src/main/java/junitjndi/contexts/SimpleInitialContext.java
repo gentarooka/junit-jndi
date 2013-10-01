@@ -1,13 +1,17 @@
 package junitjndi.contexts;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 
 import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.NameAlreadyBoundException;
+import javax.naming.NameClassPair;
+import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 
 import junitjndi.model.JndiEntryResolver;
@@ -129,6 +133,35 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 		final Context subContext = new SimpleInitialContext(jndiEntryResolver.getJndiType(), jndiEntryResolver.getResolvedName());
 		SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).add(jndiEntryResolver.getResolvedName());
 		return subContext;
+	}
+
+	@Override
+	public NamingEnumeration<NameClassPair> list(Name name) throws NamingException
+	{
+		return list(name.toString());
+	}
+
+	@Override
+	public NamingEnumeration<NameClassPair> list(String name) throws NamingException
+	{
+		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
+
+		if (!SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).contains(jndiEntryResolver.getResolvedName()))
+		{
+			throw new NamingException("any object is not binded to name : " + jndiEntryResolver.getFullQualifiedName());
+		}
+
+		final Set<NameClassPair> result = new LinkedHashSet<NameClassPair>(DICTIONNARIES.get(jndiEntryResolver.getJndiType()).size());
+		for (Entry<String, Object> entry : DICTIONNARIES.get(jndiEntryResolver.getJndiType()).entrySet())
+		{
+			if (StringUtils.startsWith(entry.getKey(), jndiEntryResolver.getResolvedName() + "/"))
+			{
+				final String className = entry.getValue() == null ? null : entry.getValue().getClass().toString();
+				result.add(new NameClassPair(jndiEntryResolver.getJndiType().getJndiEntry() + entry.getKey(), className, false));
+			}
+		}
+
+		return new MockNamingEnumeration(result);
 	}
 
 	public boolean isRootContext()

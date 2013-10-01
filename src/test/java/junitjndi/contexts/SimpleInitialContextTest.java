@@ -2,10 +2,13 @@ package junitjndi.contexts;
 
 import static org.fest.assertions.api.Assertions.assertThat;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import javax.naming.NameClassPair;
+import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 
 import junitjndi.types.JNDINamespace;
@@ -95,19 +98,13 @@ public class SimpleInitialContextTest
 		final SimpleInitialContext sc = new SimpleInitialContext();
 
 		final SimpleInitialContext subContext1 = (SimpleInitialContext)sc.createSubcontext("java:global/aaa");
-		assertThat(subContext1).isNotNull();
-		assertThat(subContext1.getCurrentEntry()).isEqualTo(JNDINamespace.GLOBAL);
-		assertThat(subContext1.getCurrentSubContext()).isEqualTo("aaa");
+		validateSubContext(subContext1, JNDINamespace.GLOBAL, "aaa");
 
 		final SimpleInitialContext subContext2 = (SimpleInitialContext)subContext1.createSubcontext("bbb");
-		assertThat(subContext2).isNotNull();
-		assertThat(subContext2.getCurrentEntry()).isEqualTo(JNDINamespace.GLOBAL);
-		assertThat(subContext2.getCurrentSubContext()).isEqualTo("aaa/bbb");
+		validateSubContext(subContext2, JNDINamespace.GLOBAL, "aaa/bbb");
 
 		final SimpleInitialContext subContext3 = (SimpleInitialContext)subContext2.createSubcontext("java:global/ccc");
-		assertThat(subContext3).isNotNull();
-		assertThat(subContext3.getCurrentEntry()).isEqualTo(JNDINamespace.GLOBAL);
-		assertThat(subContext3.getCurrentSubContext()).isEqualTo("aaa/bbb/ccc");
+		validateSubContext(subContext3, JNDINamespace.GLOBAL, "aaa/bbb/ccc");
 
 		// we can bind an object even if a subcontext with same name has been created...
 		sc.bind("java:global/aaa", "princess");
@@ -123,26 +120,68 @@ public class SimpleInitialContextTest
 		final SimpleInitialContext sc = new SimpleInitialContext();
 
 		final SimpleInitialContext subContext1 = (SimpleInitialContext)sc.createSubcontext("java:app/niv1");
-		assertThat(subContext1).isNotNull();
-		assertThat(subContext1.getCurrentEntry()).isEqualTo(JNDINamespace.APPLICATION);
-		assertThat(subContext1.getCurrentSubContext()).isEqualTo("niv1");
+		validateSubContext(subContext1, JNDINamespace.APPLICATION, "niv1");
 
 		final SimpleInitialContext subContext2 = (SimpleInitialContext)subContext1.createSubcontext("niv2");
-		assertThat(subContext2).isNotNull();
-		assertThat(subContext2.getCurrentEntry()).isEqualTo(JNDINamespace.APPLICATION);
-		assertThat(subContext2.getCurrentSubContext()).isEqualTo("niv1/niv2");
+		validateSubContext(subContext2, JNDINamespace.APPLICATION, "niv1/niv2");
 
 		final SimpleInitialContext subContext3 = (SimpleInitialContext)subContext2.createSubcontext("niv3");
-		assertThat(subContext3).isNotNull();
-		assertThat(subContext3.getCurrentEntry()).isEqualTo(JNDINamespace.APPLICATION);
-		assertThat(subContext3.getCurrentSubContext()).isEqualTo("niv1/niv2/niv3");
+		validateSubContext(subContext3, JNDINamespace.APPLICATION, "niv1/niv2/niv3");
 
 		final SimpleInitialContext subContext4 = (SimpleInitialContext)subContext3.createSubcontext("niv4");
-		assertThat(subContext4).isNotNull();
-		assertThat(subContext4.getCurrentEntry()).isEqualTo(JNDINamespace.APPLICATION);
-		assertThat(subContext4.getCurrentSubContext()).isEqualTo("niv1/niv2/niv3/niv4");
+		validateSubContext(subContext4, JNDINamespace.APPLICATION, "niv1/niv2/niv3/niv4");
 
 		sc.bind("java:app/niv1/niv2/niv3/niv4/monExemple", "exemple");
 		assertThat(sc.lookup("java:app/niv1/niv2/niv3/niv4/monExemple")).isEqualTo("exemple");
+	}
+
+	@Test(expected = NamingException.class)
+	public void testListNotfound() throws Exception
+	{
+		final SimpleInitialContext sc = new SimpleInitialContext();
+		sc.list("java:global/mock/mock2/mock3/mock4");
+	}
+
+	@Test()
+	public void testList() throws Exception
+	{
+		final SimpleInitialContext sc = new SimpleInitialContext();
+		sc.createSubcontext("java:global/zzzz").createSubcontext("qqqq").createSubcontext("iiii");
+
+		final Map<String, Object> dataSets = new HashMap<String, Object>(10);
+		dataSets.put("zzzz/qqqq/iiii/v1", "allo");
+		dataSets.put("zzzz/qqqq/iiii/v2", "maman");
+		dataSets.put("zzzz/qqqq/iiii/v3", "bobo");
+		dataSets.put("zzzz/qqqq/iiii/v4", "je");
+		dataSets.put("zzzz/qqqq/iiii/v5", "t'appelle");
+		dataSets.put("zzzz/qqqq/iiii/v6", "parce que je suis pas beau !");
+
+		for (Entry<String, Object> entry : dataSets.entrySet())
+		{
+			final String key = "java:global/" + entry.getKey();
+			sc.bind(key, entry.getValue());
+			assertThat(sc.lookup(key)).isEqualTo(entry.getValue());
+		}
+
+		final NamingEnumeration<NameClassPair> namingEnum = sc.list("java:global/zzzz/qqqq/iiii");
+		int count = 0;
+		while (namingEnum.hasMore())
+		{
+			final NameClassPair ncp = namingEnum.next();
+			count++;
+
+			assertThat(ncp).isNotNull();
+			assertThat(ncp.getName()).isNotNull();
+			assertThat(sc.lookup(ncp.getName())).isEqualTo(dataSets.get(StringUtils.substringAfter(ncp.getName(), "/")));
+		}
+
+		assertThat(count).isEqualTo(dataSets.size());
+	}
+
+	private void validateSubContext(final SimpleInitialContext subContext, final JNDINamespace namespace, final String pathExpected)
+	{
+		assertThat(subContext).isNotNull();
+		assertThat(subContext.getCurrentEntry()).isEqualTo(namespace);
+		assertThat(subContext.getCurrentSubContext()).isEqualTo(pathExpected);
 	}
 }
