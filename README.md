@@ -1,6 +1,6 @@
 # JNDI for JUnit4
 
-this library is JNDI mock implementation for testing with JUnit4.x
+this library is JNDI mock implementation (compatible java EE6 specifications) for testing with JUnit4.x
 
 # USAGE
 
@@ -15,7 +15,7 @@ and write dependency in your pom.xml
     <dependency>
       <groupId>junit-jndi</groupId>
       <artifactId>junit-jndi</artifactId>
-      <version>1.0-SNAPSHOT</version>
+      <version>2.0-SNAPSHOT</version>
     </dependency>
 
 
@@ -33,13 +33,36 @@ Please see JndiJunitTest.java for more details.
     		protected void bind(Context context) throws NamingException {
     			context.bind("someobj", new Object());
     			context.bind("somestring", "abc");
+    			
+    			// by default, the java:/ namespace is used.
+    			context.bind("/level1/level2", "abc");
+    			
+    			// we can create entries on global namespace.
+    			context.bind("java:global/date/us", "2013-10-01");
+    			context.bind("java:global/date/fr", "01/10/2013");
+    			
+    			// with many levels, you must create subcontextes.
+    			context.createSubContext("java:app/level1").createSubContext("level2").createSubContext("level3");
+    			context.bind("java:app/level1/level2/level3/title", "example");
+    			
     		}
     	};
     
     	@Test
     	public void lookup() throws NamingException {
-    		assertThat(new InitialContext().lookup("someobj"), is(notNullValue(Object.class)));
-    		assertThat((String)new InitialContext().lookup("somestring"), is("abc"));
+    		final Context ic = new InitialContext();
+    		
+    		assertThat(ic.lookup("someobj"), is(notNullValue(Object.class)));
+    		assertThat((String)ic.lookup("somestring"), is("abc"));
+    		
+    		assertThat((String)ic.lookup("level1/level2"), is("abc"));
+    		assertThat((String)ic.lookup("/level1/level2"), is("abc"));
+    		assertThat((String)ic.lookup("java:/level1/level2"), is("abc"));
+    		
+    		assertThat((String)ic.lookup("java:global/date/us"), is("2013-10-01"));
+    		assertThat((String)ic.lookup("java:global/date/fr"), is("01/10/2013"));
+    		
+    		assertThat((String)ic.lookup("java:app/level1/level2/level3/title"), is("example"));
     	}
     
     }
