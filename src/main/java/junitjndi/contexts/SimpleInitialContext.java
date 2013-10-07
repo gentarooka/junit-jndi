@@ -11,6 +11,7 @@ import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.NameAlreadyBoundException;
 import javax.naming.NameClassPair;
+import javax.naming.NameNotFoundException;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 
@@ -65,7 +66,7 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 
 		if (!DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(jndiEntryResolver.getResolvedName()))
 		{
-			throw new NamingException("any object is not binded to name : " + jndiEntryResolver.getOriginalName());
+			throw new NameNotFoundException("any object is not binded to name : " + jndiEntryResolver.getOriginalName());
 		}
 		
 		return DICTIONNARIES.get(jndiEntryResolver.getJndiType()).get(jndiEntryResolver.getResolvedName());
