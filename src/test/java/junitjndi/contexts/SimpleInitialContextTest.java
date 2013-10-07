@@ -178,6 +178,25 @@ public class SimpleInitialContextTest
 		assertThat(count).isEqualTo(dataSets.size());
 	}
 
+	@Test
+	public void testMultipleSameSubContexts() throws Exception
+	{
+		final SimpleInitialContext sc = new SimpleInitialContext();
+		SimpleInitialContext c1 = (SimpleInitialContext)sc.createSubcontext("java:global/allo");
+		SimpleInitialContext c2 = (SimpleInitialContext)sc.createSubcontext("java:global/allo");
+		SimpleInitialContext c3 = (SimpleInitialContext)sc.createSubcontext("java:global/allo");
+		assertThat(c1).isNotNull();
+		assertThat(c2).isNotNull();
+		assertThat(c3).isNotNull();
+		assertThat(c1.getCurrentEntry()).isEqualTo(c2.getCurrentEntry());
+		assertThat(c1.getCurrentEntry()).isEqualTo(c3.getCurrentEntry());
+		assertThat(c1.getCurrentSubContext()).isEqualTo(c2.getCurrentSubContext());
+		assertThat(c1.getCurrentSubContext()).isEqualTo(c3.getCurrentSubContext());
+
+		c1.createSubcontext("maman");
+		c1.createSubcontext("maman");
+	}
+
 	private void validateSubContext(final SimpleInitialContext subContext, final JNDINamespace namespace, final String pathExpected)
 	{
 		assertThat(subContext).isNotNull();

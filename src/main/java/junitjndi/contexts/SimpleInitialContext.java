@@ -124,12 +124,6 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 	public Context createSubcontext(String name) throws NamingException
 	{
 		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
-		
-		if (SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).contains(jndiEntryResolver.getResolvedName()))
-		{
-			throw new NameAlreadyBoundException("SubContext " + jndiEntryResolver.getFullQualifiedName() + " already exists...");
-		}
-		
 		final Context subContext = new SimpleInitialContext(jndiEntryResolver.getJndiType(), jndiEntryResolver.getResolvedName());
 		SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).add(jndiEntryResolver.getResolvedName());
 		return subContext;
