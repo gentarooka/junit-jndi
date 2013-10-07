@@ -158,6 +158,26 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 		return new MockNamingEnumeration(result);
 	}
 
+	@Override
+	public void unbind(Name name) throws NamingException
+	{
+		unbind(name);
+	}
+
+	@Override
+	public void unbind(String name) throws NamingException
+	{
+		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
+
+		if (!DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(jndiEntryResolver.getResolvedName()))
+		{
+			throw new NamingException("any object is not binded to name : " + jndiEntryResolver.getOriginalName());
+		}
+
+		DICTIONNARIES.get(jndiEntryResolver.getJndiType()).remove(jndiEntryResolver.getResolvedName());
+	}
+
+
 	public boolean isRootContext()
 	{
 		return this.currentEntry == null && StringUtils.isBlank(this.currentSubContext);

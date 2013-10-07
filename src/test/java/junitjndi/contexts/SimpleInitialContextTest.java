@@ -197,6 +197,17 @@ public class SimpleInitialContextTest
 		c1.createSubcontext("maman");
 	}
 
+	@Test
+	public void testUnbind() throws Exception
+	{
+		final SimpleInitialContext sc = new SimpleInitialContext();
+		sc.bind("java:global/niv1", "puf");
+		sc.bind("java:global/niv1/niv2", "puf");
+
+		sc.unbind("java:global/niv1");
+		sc.unbind("java:global/niv1/niv2");
+	}
+
 	private void validateSubContext(final SimpleInitialContext subContext, final JNDINamespace namespace, final String pathExpected)
 	{
 		assertThat(subContext).isNotNull();
