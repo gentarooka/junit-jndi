@@ -1,4 +1,4 @@
-package junitjndi;
+package junitjndi.contexts;
 
 import java.util.Hashtable;
 

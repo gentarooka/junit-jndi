@@ -8,6 +8,8 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
+import junitjndi.rules.JndiRule;
+
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -20,8 +22,8 @@ public class JUnitJndiTest {
 			context.bind("someobj", new Object());
 			context.bind("somestring", "abc");
 			
-			Context cx = context.createSubcontext("java:/comp/env");
-			cx.bind("jdbc/mysql", "MysqlDatasource");
+			Context cx = context.createSubcontext("java:/comp").createSubcontext("/env").createSubcontext("jdbc");
+			cx.bind("mysql", "MysqlDatasource");
 		}
 	};
 	
@@ -40,8 +42,7 @@ public class JUnitJndiTest {
 	
 	@Test
 	public void lookupSubContext() throws NamingException {
-		Context cx = (Context) new InitialContext().lookup("java:/comp/env");
-		assertThat((String)cx.lookup("jdbc/mysql"), is("MysqlDatasource"));
+		assertThat((String)new InitialContext().lookup("comp/env/jdbc/mysql"), is("MysqlDatasource"));
 	}
 	
 	@Test(expected=NamingException.class)
