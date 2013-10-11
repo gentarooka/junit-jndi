@@ -7,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import javax.naming.Context;
+import javax.naming.NameAlreadyBoundException;
 import javax.naming.NameClassPair;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
@@ -14,26 +16,37 @@ import javax.naming.NamingException;
 import junitjndi.types.JNDINamespace;
 
 import org.apache.commons.lang3.StringUtils;
+import org.junit.Before;
 import org.junit.Test;
 
 public class SimpleInitialContextTest
 {
+	@Before
+	public void before()
+	{
+		SimpleInitialContext.reset();
+		System.setProperty(SimpleInitialContext.JBOSS_SPECIFIC_KEY, "false");
+	}
+
+	@Test()
+	public void testValueForJBossSpecificMode() throws Exception
+	{
+		final SimpleInitialContext sc = new SimpleInitialContext();
+		assertThat(sc.isJBossSpecificMode()).isEqualTo(false);
+	}
+
 	@Test()
 	public void testBindSimple() throws Exception
 	{
 		final SimpleInitialContext sc = new SimpleInitialContext();
 		final Map<String, Object> mapDataSets = new LinkedHashMap<String, Object>();
 		mapDataSets.put("env", "tutu");
-		mapDataSets.put("env/muche", "truc");
 		mapDataSets.put("java:global/pof", "pof");
 		mapDataSets.put("java:global/puf", "pif");
-		mapDataSets.put("java:global/tata/titi", "asterix");
 		mapDataSets.put("java:app/puf", "paf");
 		mapDataSets.put("java:jboss/puf", "prrr");
 		mapDataSets.put("java:comp/puf", "tata");
-		mapDataSets.put("java:module/puf", "prout");
-		mapDataSets.put("java:global/fap/gag", null);
-		mapDataSets.put("java:app/allo/papa", "bobo");
+		mapDataSets.put("java:module/puf", null);
 
 		for (Entry<String, Object> entry : mapDataSets.entrySet())
 		{
@@ -82,36 +95,21 @@ public class SimpleInitialContextTest
 		assertThat(subContext3.getCurrentEntry()).isEqualTo(JNDINamespace.ROOT);
 		assertThat(subContext3.getCurrentSubContext()).isEqualTo("aaa/bbb/ccc");
 
-		// we can bind an object even if a subcontext with same name has been created...
-		sc.bind("/aaa", "princess");
-		assertThat(sc.lookup("aaa")).isEqualTo("princess");
+		sc.bind("/aaa/bbb/ccc/ddd", "alloQuoiRoot");
+		assertThat(sc.lookup("aaa/bbb/ccc/ddd")).isEqualTo("alloQuoiRoot");
 
-		sc.bind("/aaa/bbb/ccc", "alloQuoiRoot");
-		assertThat(sc.lookup("aaa/bbb/ccc")).isEqualTo("alloQuoiRoot");
-		assertThat(sc.lookup("/aaa/bbb/ccc")).isEqualTo("alloQuoiRoot");
-		assertThat(sc.lookup("java:/aaa/bbb/ccc")).isEqualTo("alloQuoiRoot");
+		assertThat(sc.lookup("/aaa")).isInstanceOf(Context.class);
+		assertThat(sc.lookup("/aaa/bbb")).isInstanceOf(Context.class);
+		assertThat(sc.lookup("/aaa/bbb/ccc")).isInstanceOf(Context.class);
 	}
 
-	@Test()
-	public void testBindThreeLevelsOnGlobalContext() throws Exception
+	@Test(expected = NameAlreadyBoundException.class)
+	public void testBindObjectONSubContext() throws Exception
 	{
+		// we can't bind an object if a subcontext with the same name has been created...
 		final SimpleInitialContext sc = new SimpleInitialContext();
-
-		final SimpleInitialContext subContext1 = (SimpleInitialContext)sc.createSubcontext("java:global/aaa");
-		validateSubContext(subContext1, JNDINamespace.GLOBAL, "aaa");
-
-		final SimpleInitialContext subContext2 = (SimpleInitialContext)subContext1.createSubcontext("bbb");
-		validateSubContext(subContext2, JNDINamespace.GLOBAL, "aaa/bbb");
-
-		final SimpleInitialContext subContext3 = (SimpleInitialContext)subContext2.createSubcontext("java:global/ccc");
-		validateSubContext(subContext3, JNDINamespace.GLOBAL, "aaa/bbb/ccc");
-
-		// we can bind an object even if a subcontext with same name has been created...
-		sc.bind("java:global/aaa", "princess");
-		assertThat(sc.lookup("java:global/aaa")).isEqualTo("princess");
-
-		sc.bind("java:global/aaa/bbb/ccc", "alloQuoi");
-		assertThat(sc.lookup("java:global/aaa/bbb/ccc")).isEqualTo("alloQuoi");
+		final SimpleInitialContext subContext = (SimpleInitialContext)sc.createSubcontext("/agileTourToulouse");
+		sc.bind("/agileTourToulouse", "princess");
 	}
 
 	@Test()
@@ -178,23 +176,12 @@ public class SimpleInitialContextTest
 		assertThat(count).isEqualTo(dataSets.size());
 	}
 
-	@Test
+	@Test(expected = NameAlreadyBoundException.class)
 	public void testMultipleSameSubContexts() throws Exception
 	{
 		final SimpleInitialContext sc = new SimpleInitialContext();
-		SimpleInitialContext c1 = (SimpleInitialContext)sc.createSubcontext("java:global/allo");
-		SimpleInitialContext c2 = (SimpleInitialContext)sc.createSubcontext("java:global/allo");
-		SimpleInitialContext c3 = (SimpleInitialContext)sc.createSubcontext("java:global/allo");
-		assertThat(c1).isNotNull();
-		assertThat(c2).isNotNull();
-		assertThat(c3).isNotNull();
-		assertThat(c1.getCurrentEntry()).isEqualTo(c2.getCurrentEntry());
-		assertThat(c1.getCurrentEntry()).isEqualTo(c3.getCurrentEntry());
-		assertThat(c1.getCurrentSubContext()).isEqualTo(c2.getCurrentSubContext());
-		assertThat(c1.getCurrentSubContext()).isEqualTo(c3.getCurrentSubContext());
-
-		c1.createSubcontext("maman");
-		c1.createSubcontext("maman");
+		sc.createSubcontext("java:global/allo");
+		sc.createSubcontext("java:global/allo");
 	}
 
 	@Test

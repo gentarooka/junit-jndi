@@ -1,6 +1,8 @@
 # JNDI for JUnit4
 
 this library is JNDI mock implementation (compatible java EE6 specifications) for testing with JUnit4.x
+This API implements a jboss specific mode to be compatible with jboss as 7.x
+You can activate this mode if the SimpleInitialContext.JBOSS_SPECIFIC_KEY system property is equal to "true".
 
 # USAGE
 

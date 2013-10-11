@@ -14,19 +14,16 @@ import junitjndi.rules.JndiRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-public class JUnitJndiTest {
+public class JUnitJndiForJBossTest {
 	
 	@ClassRule
 	public static JndiRule jndi = new JndiRule() {
 		@Override
 		protected void bind(Context context) throws NamingException {
-			SimpleInitialContext.reset();
-
+			System.setProperty(SimpleInitialContext.JBOSS_SPECIFIC_KEY, "true");
 			context.bind("someobj", new Object());
 			context.bind("somestring", "abc");
-			
-			Context cx = context.createSubcontext("java:/comp").createSubcontext("/env").createSubcontext("jdbc");
-			cx.bind("mysql", "MysqlDatasource");
+			context.bind("java:/comp/env/jdbc/mysql", "MysqlDatasource");
 		}
 	};
 	

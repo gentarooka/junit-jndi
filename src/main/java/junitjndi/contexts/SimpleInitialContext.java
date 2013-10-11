@@ -5,7 +5,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.TreeSet;
 
 import javax.naming.Context;
 import javax.naming.Name;
@@ -22,17 +21,24 @@ import org.apache.commons.lang3.StringUtils;
 
 public class SimpleInitialContext extends NotImplementedContext implements Context
 {
+	public static final String JBOSS_SPECIFIC_KEY = "junit.jndi.specific.jboss";
+
+	public static final void reset()
+	{
+		for (Entry<JNDINamespace, Map<String, Object>> entry : DICTIONNARIES.entrySet())
+		{
+			DICTIONNARIES.get(entry.getKey()).clear();
+		}
+	}
+
 	private static final Map<JNDINamespace, Map<String, Object>> DICTIONNARIES = new HashMap<JNDINamespace, Map<String, Object>>(
 		JNDINamespace.values().length);
-
-	private static final Map<JNDINamespace, Set<String>> SUBCONTEXTS = new HashMap<JNDINamespace, Set<String>>(JNDINamespace.values().length);
 
 	static
 	{
 		for (JNDINamespace tje : JNDINamespace.values())
 		{
 			DICTIONNARIES.put(tje, new HashMap<String, Object>());
-			SUBCONTEXTS.put(tje, new TreeSet<String>());
 		}
 	}
 
@@ -69,7 +75,14 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 			throw new NameNotFoundException("any object is not binded to name : " + jndiEntryResolver.getOriginalName());
 		}
 		
-		return DICTIONNARIES.get(jndiEntryResolver.getJndiType()).get(jndiEntryResolver.getResolvedName());
+		final Object obj = DICTIONNARIES.get(jndiEntryResolver.getJndiType()).get(jndiEntryResolver.getResolvedName());
+
+		if (isJBossSpecificMode() && obj instanceof SimpleInitialContext)
+		{
+			throw new NamingException("jboss specific: the subcontexts are not saved...");
+		}
+
+		return obj;
 	}
 
 
@@ -90,7 +103,7 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 		}
 
 		// if the entry is : "java:global/a/b/c/d", we must extract : "a/b/c" to ensure subcontexts exist.
-		if (StringUtils.countMatches(jndiEntryResolver.getResolvedName(), "/") > 1)
+		if (StringUtils.countMatches(jndiEntryResolver.getResolvedName(), "/") > 0)
 		{
 			final String[] subContextes = StringUtils.split(jndiEntryResolver.getResolvedName(), "/");
 
@@ -106,9 +119,14 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 					currentSubContext += "/" + subContextes[index];
 				}
 
-				if (!SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).contains(currentSubContext))
+				if (isJBossSpecificMode() && !DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(currentSubContext))
 				{
-					throw new NamingException("SubContext " + currentSubContext + " doesn't exists...");
+					createSubcontext(jndiEntryResolver.getJndiType().getJndiEntry() + currentSubContext);
+				}
+
+				if (!DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(currentSubContext))
+				{
+					throw new NamingException("SubContext " + jndiEntryResolver.getJndiType().getJndiEntry() + currentSubContext + " doesn't exists...");
 				}
 			}
 		}
@@ -125,8 +143,36 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 	public Context createSubcontext(String name) throws NamingException
 	{
 		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
+
+		if (StringUtils.isNotBlank(jndiEntryResolver.getOriginalParentName())
+			&& !DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(jndiEntryResolver.getOriginalParentName()))
+		{
+			throw new NamingException("SubContext parent" + jndiEntryResolver.getOriginalParentName() + " doesn't exists...");
+		}
+
+		if (isJBossSpecificMode())
+		{
+			Object obj = DICTIONNARIES.get(jndiEntryResolver.getJndiType()).get(jndiEntryResolver.getResolvedName());
+
+			if (obj != null)
+			{
+				if (obj instanceof Context)
+				{
+					return (Context)obj;
+				}
+				else
+				{
+					throw new NameAlreadyBoundException("Jndi name already exists (" + jndiEntryResolver.getFullQualifiedName() + ").");
+				}
+			}
+		}
+		else if (DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(jndiEntryResolver.getResolvedName()))
+		{
+			throw new NameAlreadyBoundException("Jndi name already exists (" + jndiEntryResolver.getFullQualifiedName() + ").");
+		}
+
 		final Context subContext = new SimpleInitialContext(jndiEntryResolver.getJndiType(), jndiEntryResolver.getResolvedName());
-		SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).add(jndiEntryResolver.getResolvedName());
+		DICTIONNARIES.get(jndiEntryResolver.getJndiType()).put(jndiEntryResolver.getResolvedName(), subContext);
 		return subContext;
 	}
 
@@ -141,18 +187,24 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 	{
 		final JndiEntryResolver jndiEntryResolver = new JndiEntryResolver(name, currentEntry, currentSubContext);
 
-		if (!SUBCONTEXTS.get(jndiEntryResolver.getJndiType()).contains(jndiEntryResolver.getResolvedName()))
+		if (!DICTIONNARIES.get(jndiEntryResolver.getJndiType()).containsKey(jndiEntryResolver.getResolvedName()))
 		{
 			throw new NamingException("any object is not binded to name : " + jndiEntryResolver.getFullQualifiedName());
 		}
 
 		final Set<NameClassPair> result = new LinkedHashSet<NameClassPair>(DICTIONNARIES.get(jndiEntryResolver.getJndiType()).size());
-		for (Entry<String, Object> entry : DICTIONNARIES.get(jndiEntryResolver.getJndiType()).entrySet())
+
+		final Object obj = DICTIONNARIES.get(jndiEntryResolver.getJndiType()).get(jndiEntryResolver.getResolvedName());
+		if (obj != null && obj instanceof SimpleInitialContext)
 		{
-			if (StringUtils.startsWith(entry.getKey(), jndiEntryResolver.getResolvedName() + "/"))
+			for (Entry<String, Object> entry : DICTIONNARIES.get(jndiEntryResolver.getJndiType()).entrySet())
 			{
-				final String className = entry.getValue() == null ? null : entry.getValue().getClass().toString();
-				result.add(new NameClassPair(jndiEntryResolver.getJndiType().getJndiEntry() + entry.getKey(), className, false));
+				if (StringUtils.startsWith(entry.getKey(), jndiEntryResolver.getResolvedName() + "/") &&
+					!StringUtils.contains(StringUtils.substringAfter(entry.getKey(), jndiEntryResolver.getResolvedName() + "/"), "/"))
+				{
+					final String className = entry.getValue() == null ? null : entry.getValue().getClass().toString();
+					result.add(new NameClassPair(jndiEntryResolver.getJndiType().getJndiEntry() + entry.getKey(), className, false));
+				}
 			}
 		}
 
@@ -197,5 +249,15 @@ public class SimpleInitialContext extends NotImplementedContext implements Conte
 	public String getCurrentSubContext()
 	{
 		return currentSubContext;
+	}
+
+	/**
+	 * Determine if the special mode for JBoss has been checked or not.
+	 * 
+	 * @return <code>true</code> if the special mode for JBoss has been checked, <code>false</code> else.
+	 */
+	public boolean isJBossSpecificMode()
+	{
+		return Boolean.getBoolean(JBOSS_SPECIFIC_KEY);
 	}
 }
